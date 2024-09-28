@@ -13,7 +13,7 @@
 
     - name: Import Variables
       ansible.builtin.include_vars:
-        file: vars/main.yml
+        file: "{{ item }}"
       with_items:
         - vars/env/abc.production.yml # Probably Dynamic based on intended enclave - i.e., DEV, TST, PRD.
         - vars/main.yml
