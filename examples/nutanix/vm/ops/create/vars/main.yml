@@ -1,0 +1,18 @@
+# code: language=ansible
+---
+nutanix_cluster_ip: 10.10.10.50
+nutanix_cluster_name: ntnx-cluster-001
+nutanix_cluster_network_name: vlan1000-servers
+nutanix_cluster_storage_container: SC01
+nutanix_image_name: ms-win-srv-2019-baseline-template-name
+
+vm_desc: MS ADDS Directory Server 001
+vm_name: ds-001-xy
+vm_memory_gb: 4
+vm_num_vcpus: 2
+vm_num_cores_per_vcpu: 1
+
+vm_additional_disk_list: # May be better in Survey or Playbook Run Time Vars?
+  ms-adds-dc:
+    - size_gb: 20
+    - size_gb: 10

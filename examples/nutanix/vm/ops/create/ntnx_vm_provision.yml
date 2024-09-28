@@ -1,0 +1,89 @@
+# code: language=ansible
+---
+- name: Nutanix Virtual Machine Provisioning
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Temporary Facts Setting # Better from Survey / Playbook Runtime Vars / Demo. Purpose Only
+      ansible.builtin.set_fact:
+        nutanix_vm_additional_disks_required: True
+        server_role: domain_controller
+
+    - name: Import Variables
+      ansible.builtin.include_vars:
+        file: vars/main.yml
+
+    - name: Provisioning
+      nutanix.ncp.ntnx_vms:
+        nutanix_host: "{{ nutanix_cluster_ip }}"
+        nutanix_username: "{{ lookup('env','NUTANIX_CLUSTER_SVC_ACCT_USERNAME') }}" # Should be Project Credentials
+        nutanix_password: "{{ lookup('env','NUTANIX_CLUSTER_SVC_ACCT_PASSWORD') }}" # Should be Project Credentials
+        validate_certs: False
+        state: present
+        cluster:
+          name: "{{ nutanix_cluster_name }}"
+        name: "{{ vm_name }}"
+        desc: "{{ vm_desc }}"
+        memory_gb: "{{ vm_memory_gb }}"
+        vcpus: "{{ vm_num_vcpus }}"
+        cores_per_vcpu: "{{ vm_num_cores_per_vcpu }}"
+        boot_config:
+          boot_type: UEFI # This should be dynamically generated based on 'clone_image'
+          boot_order:
+            - DISK
+            - CDROM
+            - NETWORK
+        disks:
+          - type: DISK
+            size_gb: 65 # Pretend Organization Standard "C:"
+            bus: SCSI
+            clone_image: "{{ nutanix_image_name }}"
+          - type: CDROM
+            bus: SATA
+            empty_cdrom: True
+        networks:
+          is_connected: true
+          subnet:
+            cluster:
+              name: "{{ nutanix_cluster_name }}"
+            name: "{{ nutanix_cluster_network_name }}"
+
+    - name: Nutanix VM Additional Disk Processing
+      block:
+        - name: Retrieve Nutanix VM Information
+          nutanix.ncp.ntnx_vms_info:
+            nutanix_host: "{{ nutanix_cluster_ip }}"
+            nutanix_username: "{{ lookup('env','NUTANIX_CLUSTER_SVC_ACCT_USERNAME') }}" # Should be Project Credentials
+            nutanix_password: "{{ lookup('env','NUTANIX_CLUSTER_SVC_ACCT_PASSWORD') }}" # Should be Project Credentials
+            validate_certs: False
+            filter:
+              vm_name: "{{ vm_name }}"
+            kind: vm
+          register: nutanix_vm_info
+
+        - name: Determine Nutanix VM UUID
+          ansible.builtin.set_fact:
+            vm_uuid: "{{ nutanix_vm_info.json.entities[0].metadata.uuid }}" # Requires Testing / Info may be 'nutanix_vm_info' we can reference.
+
+        - name: Populate the Additional Disks Required List based on Server Function
+          block:
+            - name: Additional Disks for Domain Controller
+              ansible.builtin.set_fact:
+                vm_additional_disk_required_list: "{{ vm_additional_disk_list.ms-adds-dc }}"
+              when: server_role == "domain_controller"
+
+        - name: Add Disks to the Nutanix VM
+          nutanix.ncp.ntnx_vms:
+            vm_uuid: "{{ vm_uuid }}"
+            disks:
+              type: DISK
+              size_gb: "{{ item.size_gb }}"
+              bus: SCSI
+              storage_container:
+                name: "{{ nutanix_cluster_storage_container }}"
+          with_items: "{{ vm_additional_disk_required_list }}"
+          when: nutanix_vm_additional_disks_required
+      when:
+        - vm_uuid
+        - nutanix_vm_additional_disks_required | bool
