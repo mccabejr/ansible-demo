@@ -9,10 +9,19 @@
       ansible.builtin.set_fact:
         nutanix_vm_additional_disks_required: True
         server_role: domain_controller
+        vm_timezone_name: US Eastern Standard Time # Probably Dynamic based on Nutanix Cluster Target?
 
     - name: Import Variables
       ansible.builtin.include_vars:
         file: vars/main.yml
+      with_items:
+        - vars/env/abc.production.yml # Probably Dynamic based on intended enclave - i.e., DEV, TST, PRD.
+        - vars/main.yml
+
+    - name: Microsoft Windows Server Sysprep Unattend.xml Generation
+      ansible.builtin.template:
+        src: templates/sysprep/ms-win-srv-2016-template.xml.j2 # Probably Dynamic based on intended OS - 2016, 2019, 2022, 2025, etc.
+        dest: ./temp_sysprep_unattend.xml
 
     - name: Provisioning
       nutanix.ncp.ntnx_vms:
@@ -48,6 +57,9 @@
             cluster:
               name: "{{ nutanix_cluster_name }}"
             name: "{{ nutanix_cluster_network_name }}"
+        guest_customization:
+          script_path: ./temp_sysprep_unattend.xml
+          type: sysprep
 
     - name: Nutanix VM Additional Disk Processing
       block:

@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+    <settings pass="specialize">
+        <component xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+        <ComputerName>"{{ vm_name | upper }}"</ComputerName>
+        <RegisteredOrganization>My Organization</RegisteredOrganization>
+        <RegisteredOwner>James McCabe</RegisteredOwner>
+        <TimeZone>"{{ vm_timezone_name }}"</TimeZone>
+        </component>
+        <component xmlns="" name="Microsoft-Windows-TerminalServices-LocalSessionManager" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" processorArchitecture="amd64">
+        <fDenyTSConnections>false</fDenyTSConnections>
+        </component>
+        <component xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="Networking-MPSSVC-Svc" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+        <FirewallGroups>
+            <FirewallGroup wcm:action="add" wcm:keyValue="RemoteDesktop">
+                <Active>true</Active>
+                <Profile>all</Profile>
+                <Group>@FirewallAPI.dll,-28752</Group>
+            </FirewallGroup>
+        </FirewallGroups>
+        </component>
+    </settings>
+    <settings pass="oobeSystem">
+        <component xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+        <UserAccounts>
+            <AdministratorPassword>
+                <Value>"{{ lookup('env','MICROSOFT_WINDOWS_LOCAL_ADMIN_PASSWORD_ENCODED') }}"</Value>
+                <PlainText>false</PlainText>
+            </AdministratorPassword>
+        </UserAccounts>
+        <AutoLogon>
+            <Password>
+                <Value>"{{ lookup('env','MICROSOFT_WINDOWS_LOCAL_ADMIN_PASSWORD_ENCODED') }}"</Value>
+                <PlainText>false</PlainText>
+            </Password>
+            <Enabled>true</Enabled>
+            <Username>Administrator</Username>
+        </AutoLogon>
+        <FirstLogonCommands>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c netsh firewall add portopening TCP 5985 "PowerShell Remoting - TCP/5985"</CommandLine>
+                <Description>PS-Remoting Firewall Allow Rule (DEPRECATED)</Description>
+                <Order>1</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>powershell -Command "Enable-PSRemoting -SkipNetworkProfileCheck -Force"</CommandLine>
+                <Description>Enable PS-Remoting</Description>
+                <Order>2</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned"</CommandLine>
+                <Description>Set Execution Policy 64 Bit</Description>
+                <Order>3</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>C:\Windows\SysWOW64\cmd.exe /c powershell -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force"</CommandLine>
+                <Description>Set Execution Policy 32 Bit</Description>
+                <Order>4</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm quickconfig -q</CommandLine>
+                <Description>winrm quickconfig -q</Description>
+                <Order>5</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config @{MaxTimeoutms="1800000"}</CommandLine>
+                <Description>Win RM MaxTimoutms</Description>
+                <Order>6</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config/winrs @{MaxMemoryPerShellMB="800"}</CommandLine>
+                <Description>Win RM MaxMemoryPerShellMB</Description>
+                <Order>7</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config/service @{AllowUnencrypted="true"}</CommandLine>
+                <Description>Win RM AllowUnencrypted</Description>
+                <Order>8</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config/service/auth @{Basic="true"}</CommandLine>
+                <Description>Win RM auth Basic</Description>
+                <Order>9</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config/client/auth @{Basic="true"}</CommandLine>
+                <Description>Win RM client auth Basic</Description>
+                <Order>10</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c winrm set winrm/config/listener?Address=*+Transport=HTTP @{Port="5985"} </CommandLine>
+                <Description>Win RM listener Address/Port</Description>
+                <Order>11</Order>
+                <RequiresUserInput>true</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>powershell -Command "New-NetIPAddress -InterfaceIndex `$((Get-NetAdapter | Sort-Object -Property ifIndex | Select-Object -First 1).ifIndex) -IPAddress '"{{ vm_network_ipv4_address }}"' -PrefixLength '"{{ vm_network_ipv4_prefixlength }}"' -DefaultGateway '"{{ vm_network_ipv4_default_gateway }}"'"</CommandLine>
+                <Description>Static IP Address Assignment via PWSH</Description>
+                <Order>12</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>powershell -Command "Set-DnsClientServerAddress -InterfaceIndex `$((Get-NetAdapter | Sort-Object -Property ifIndex | Select-Object -First 1).ifIndex) -ServerAddresses '"{{ temp_dns_servers }}"'"</CommandLine>
+                <Description>Static Network Adapter DNS Server Assignment via PowerShell</Description>
+                <Order>13</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>powershell -Command "Set-NetConnectionProfile -InterfaceIndex `$((Get-NetAdapter | Sort-Object -Property ifIndex | Select-Object -First 1).ifIndex) -NetworkCategory Private"</CommandLine>
+                <Description>Static Network Connection Profile to 'Private' via PowerShell</Description>
+                <Order>14</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+            <SynchronousCommand wcm:action="add">
+                <CommandLine>cmd.exe /c netdom join "{{ vm_name | upper }}" /Domain:'"{{ temp_ms-adds_domain | lower }}"' /OU:'"{{ temp_ms-adds_ou_ms_servers }}"' /UserD:'"{{ lookup('env','MICROSOFT_AD_DOMAIN_JOIN_USERNAME') }}"' /PasswordD:'"{{ lookup('env','MICROSOFT_AD_DOMAIN_JOIN_PASSWORD') }}"' /Reboot:1</CommandLine>
+                <Description>Active Directory Domain Joining via NETDOM</Description>
+                <Order>15</Order>
+                <RequiresUserInput>false</RequiresUserInput>
+            </SynchronousCommand>
+        </FirstLogonCommands>
+        <OOBE>
+            <HideEULAPage>true</HideEULAPage>
+            <HideLocalAccountScreen>true</HideLocalAccountScreen>
+            <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+            <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+            <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+            <NetworkLocation>Home</NetworkLocation>
+            <ProtectYourPC>3</ProtectYourPC>
+            <SkipMachineOOBE>true</SkipMachineOOBE>
+            <SkipUserOOBE>true</SkipUserOOBE>
+        </OOBE>
+        </component>
+        <component xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+        <InputLocale>en-US</InputLocale>
+        <SystemLocale>en-US</SystemLocale>
+        <UILanguageFallback>en-us</UILanguageFallback>
+        <UILanguage>en-US</UILanguage>
+            <UserLocale>en-US</UserLocale>
+        </component>
+    </settings>
+</unattend>
