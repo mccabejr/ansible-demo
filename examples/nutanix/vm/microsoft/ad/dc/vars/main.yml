@@ -1,2 +1,25 @@
 # code: language=ansible
 ---
+partitions:
+  - drive_letter: D
+    partition_size: -1
+    disk_number: 1
+  - drive_letter: L
+    partition_size: -1
+    disk_number: 2
+drives:
+  - drive_letter: D
+    file_system: NTFS
+    new_label: Data
+  - drive_letter: L
+    file_system: NTFS
+    new_label: Data
+folders:
+  - D:\NTDS\
+  - D:\SYSVOL\
+  - L:\Logs\
+
+dc_database_path: D:\NTDS\
+dc_dns_domain_name: abc.com
+dc_domain_log_path: L:\Logs\
+dc_sysvol_path: D:\SYSVOL\
