@@ -18,6 +18,17 @@
 
     - name: File System Configuration
       block:
+        - name: CD-ROM Drive Letter Assignment
+          ansible.windows.win_powershell: #TODO - Confirm Internally with my Code
+            script: |
+              $optical = Get-CimInstance win32_volume | Where-Object DriveType -eq 5
+              If ($optical) {
+                If ( 'Z:' -ne $optical.DriveLetter) {
+                  $optical.DriveLetter = 'Z:'
+                  Set-CimInstance $optical
+                }
+              }
+
         - name: Gather disk facts
           community.windows.win_disk_facts:
             filter:
