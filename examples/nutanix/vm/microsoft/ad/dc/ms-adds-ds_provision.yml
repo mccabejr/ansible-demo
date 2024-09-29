@@ -16,47 +16,18 @@
       with_items:
         - vars/main.yml
 
-    - name: Windows Server File System Pre-requisites
+    - name: Windows Server File System Pre-requisites #TODO: This should be tested to confirm.
       block:
-        - name: CD-ROM Drive Letter Assignment
-          ansible.windows.win_powershell: #TODO - Confirm Internally with my Code
+        - name: Update Drive Letters
+          ansible.windows.win_powershell:
             script: |
-              $optical = Get-CimInstance win32_volume | Where-Object DriveType -eq 5
-              If ($optical) {
-                If ( 'Z:' -ne $optical.DriveLetter) {
-                  $optical.DriveLetter = 'Z:'
-                  Set-CimInstance $optical
-                }
+              Try {
+                Set-Partition -DiskNumber "{{ disk_number }}" -PartitionNumber "{{ partition_number }}" -NewDriveLetter "{{ drive_letter }}"
+              } Catch {
+                $Ansible.Failed = $true
+                Write-Warning -Message $PsItem
+                Return
               }
-
-        - name: Gather Disk Facts
-          community.windows.win_disk_facts:
-            filter:
-              - physical_disk
-
-        - name: Gather all RAW disks
-          ansible.builtin.set_fact:
-            raw_disks: "{{ ansible_disks | json_query(jmes_query) }}"
-          vars:
-            jmes_query: "[?partition_style=='RAW']"
-
-        - name: Ensure RAW disks are Initialized
-          community.windows.win_initialize_disk:
-            disk_number: "{{ item.number }}"
-          loop: "{{ raw_disks }}"
-
-        - name: Partition #TODO - This should be Dynamic and Automated based on win_disk_facts
-          community.windows.win_partition:
-            drive_letter: "{{ item.drive_letter }}"
-            partition_size: -1
-            disk_number: "{{ item.disk_number }}"
-          with_items: "{{ partitions }}"
-
-        - name: Format Setup #TODO - This should be Dynamic and Automated based on win_disk_facts
-          community.windows.win_format:
-            drive_letter: "{{ item.drive_letter }}"
-            file_system: "{{ item.file_system }}"
-            new_label: "{{ item.new_label }}"
           with_items: "{{ drives }}"
 
         - name: File Folder Setup

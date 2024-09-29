@@ -1,19 +1,14 @@
 # code: language=ansible
 ---
-partitions:
-  - drive_letter: D
-    partition_size: -1
-    disk_number: 1
-  - drive_letter: L
-    partition_size: -1
-    disk_number: 2
 drives:
   - drive_letter: D
-    file_system: NTFS
-    new_label: Data
+    disk_number: 1
+    partition_number: 1
+    new_label: AD Data
   - drive_letter: L
-    file_system: NTFS
-    new_label: Data
+    disk_number: 2
+    partition_number: 1
+    new_label: AD Logs
 folders:
   - D:\NTDS\
   - D:\SYSVOL\
