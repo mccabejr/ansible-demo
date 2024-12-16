@@ -1,0 +1,57 @@
+# code: language=ansible
+---
+- hosts: windows_host
+  vars:
+    ansible_connection: winrm
+    ansible_ssh_port: 5986
+    ansible_winrm_server_cert_validation: ignore
+    ansible_winrm_transport: ntlm
+  gather_facts: no
+  become_method: runas
+
+  tasks:
+    - name: Import Variables
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      with_items:
+        - vars/main.yml
+
+    - name: Windows Server File System Pre-requisites #TODO: This should be tested to confirm.
+      block:
+        - name: Update Drive Letters
+          ansible.windows.win_powershell:
+            script: |
+              Try {
+                Set-Partition -DiskNumber "{{ disk_number }}" -PartitionNumber "{{ partition_number }}" -NewDriveLetter "{{ drive_letter }}"
+              } Catch {
+                $Ansible.Failed = $true
+                Write-Warning -Message $PsItem
+                Return
+              }
+          with_items: "{{ drives }}"
+
+        - name: File Folder Setup
+          ansible.windows.win_file:
+            path: "{{ item }}"
+            state: directory
+          with_items: "{{ folders }}"
+
+    - name: Windows Server Feature
+      ansible.windows.win_feature:
+        name: AD-Domain-Services
+        state: present
+
+    - name: Microsoft Active Directory
+      block:
+        - name: Microsoft Active Directory Domain Controller Promotion
+          microsoft.ad.domain_controller:
+            database_path: "{{ dc_database_path }}"
+            dns_domain_name: "{{ dc_dns_domain_name }}"
+            domain_admin_user: "{{ lookup('env','MICROSOFT_AD_DOMAIN_ADMIN_SVC_ACCT_USERNAME') }}" # Project Credential or pulled from SecretServer
+            domain_admin_password: "{{ lookup('env','MICROSOFT_AD_DOMAIN_ADMIN_SVC_ACCT_PASSWORD') }}" # Project Credential or pulled from SecretServer
+            domain_log_path: "{{ dc_domain_log_path }}"
+            safe_mode_password: "{{ lookup('env','MICROSOFT_AD_DOMAIN_DSRM_PASSWORD') }}" # Probably programmatically pulled from SecretServer
+            sysvol_path: "{{ dc_sysvol_path }}"
+            state: domain_controller
+            install_dns: true
+            reboot: true

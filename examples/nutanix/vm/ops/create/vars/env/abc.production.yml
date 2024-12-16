@@ -1,0 +1,16 @@
+# code: language=ansible
+---
+ad_domain_services:
+  - site: 01
+    ad:
+      ds:
+        - servers:
+            - 10.10.10.20
+      dns:
+        - servers:
+            - 10.10.10.20
+            - 10.10.10.21
+
+temp_ms-adds_domain: abc.com
+temp_ms-adds_ou_ms_servers: "OU=Microsoft,OU=Servers,DC=abc,DC=com"
+temp_dns_servers: "10.10.10.20,10.10.10.21"

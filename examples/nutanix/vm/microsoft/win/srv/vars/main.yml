@@ -1,0 +1,3 @@
+# code: language=ansible
+---
+allocation_unit_size: 0 # leave 0 for default size. Appropriate for NTFS disks < 2TB
